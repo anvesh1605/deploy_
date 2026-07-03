@@ -1,4 +1,12 @@
 const ACTIVE_CONVERSATION_KEY = "aruba-qa-active-conversation";
+const API_BASE_URL = (() => {
+  const metaBase = document.querySelector('meta[name="api-base-url"]')?.content || "";
+  const globalBase =
+    window.__ARUBA_API_BASE_URL__ ||
+    window.__API_BASE_URL__ ||
+    "";
+  return String(globalBase || metaBase || "").trim().replace(/\/+$/, "");
+})();
 
 const state = {
   activeConversationId: null,
@@ -395,13 +403,14 @@ function applyConversationContext(conversation) {
 }
 
 async function apiJson(url, options = {}) {
-  const response = await fetch(url, {
+  const resolvedUrl = API_BASE_URL ? new URL(url, `${API_BASE_URL}/`).toString() : url;
+  const response = await fetch(resolvedUrl, {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options,
   });
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
-    throw new Error(`${url} failed: ${response.status} ${detail}`.trim());
+    throw new Error(`${resolvedUrl} failed: ${response.status} ${detail}`.trim());
   }
   return response.json();
 }

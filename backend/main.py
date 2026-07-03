@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from backend.config import CHAT_CONVERSATIONS_PATH, FRONTEND_DIR  # noqa: E402
+from backend.config import ALLOWED_ORIGINS, CHAT_CONVERSATIONS_PATH, FRONTEND_DIR, PORT  # noqa: E402
 from backend.conversations import ConversationStore  # noqa: E402
 from backend.runtime import AnswerService  # noqa: E402
 
@@ -52,7 +52,7 @@ conversation_store = ConversationStore(CHAT_CONVERSATIONS_PATH)
 app = FastAPI(title="Aruba QA Local Backend", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -183,7 +183,7 @@ def favicon() -> FileResponse:
 def main() -> None:
     import uvicorn
 
-    uvicorn.run("backend.main:app", host="127.0.0.1", port=8000, reload=False)
+    uvicorn.run("backend.main:app", host="127.0.0.1", port=PORT, reload=False)
 
 
 if __name__ == "__main__":

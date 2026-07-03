@@ -2,9 +2,14 @@
 __pycache__/
 backend_cache/
 logs/
+wandb/
+checkpoints/
+models/
+data/
 outputs_*/
 outputs*/
 Data/
+outputs/
 _bundle_models_used_fullbackend/
 release_notes_4100i_cleaned/
 product_question_tests/
@@ -18,4 +23,12 @@ models_used_bundle_*.zip
 *.safetensors
 *.gguf
 *.pkl
+*.jsonl
+*.pdf
 *.log
+.env
+.env.local
+.env.production
+frontend/node_modules/
+frontend/dist/
+frontend/build/
