@@ -1,0 +1,662 @@
+# Build GPU LSTM pipeline
+
+> User context
+>
+> Attachments:
+> - Create a GPU-based LSTM training pipeline for one-switch Aruba AOS-CX release-n…: `C:/Users/AIDS/.codex/attachments/94b03a59-a9a8-46b0-9f56-fcc6cfe278e0/pasted-text.txt`
+
+<details><summary>42 previous messages</summary>
+
+> I’m reading the attached request first so I can match the scope exactly, then I’ll inspect the workspace for the right entry point before making any changes.
+>
+> I’ve got the exact training spec now. Next I’m checking the workspace and any prior notes so I can drop this into the right place without broadening the scope.
+>
+> I found a local release-notes tree in the workspace, so I’m using that to infer the row shape and make the pipeline robust instead of guessing from the pasted examples alone.
+>
+> I’ve confirmed the local tree contains the same Aruba release-notes shape. I’m sampling a few resolved-issue rows now so the conversion logic matches real questions and answer prefixes, not just the spec text.
+>
+> I’m at the edit stage now. I’m adding the training script plus a matching inference helper, and I’m keeping the outputs and lookup artifacts exactly aligned with the one-switch 4100i pilot you specified.
+>
+> <details><summary>Created a file</summary>
+>
+> - Wrote `./train_lstm_gpu.py` (+1071 -0)
+>
+> </details>
+>
+> The trainer is in place. I’m adding a small inference entrypoint that reuses the saved vocab/model/lookup bundle so the test-time flow is exactly the intended `intent -> slots -> lookup -> answer` path.
+>
+> <details><summary>Created a file</summary>
+>
+> - Wrote `./infer_lstm_gpu.py` (+101 -0)
+>
+> </details>
+>
+> I’ve got both files written. I’m running a syntax check now and will patch any rough edges before I hand this over.
+>
+> The syntax check passed. I’m doing one pass over the critical training/inference paths now to tighten any small runtime edges before I stop.
+>
+> I found a couple of small alignment issues with the requested checks and slot extraction, so I’m tightening those now. The overall pipeline is intact; this is just making the outputs match your spec more closely.
+>
+> <details><summary>Edited a file</summary>
+>
+> - Wrote `./train_lstm_gpu.py` (+14 -13)
+> - Wrote `./train_lstm_gpu.py` (+18 -0)
+>
+> </details>
+>
+> I’ve finished the code changes. I’m doing a lightweight smoke run against the local 4100i sample so we can catch any real runtime issues before I wrap up.
+>
+> The smoke test surfaced a real environment issue: `numpy` isn’t installed here. I’m removing that dependency so the scripts stay runnable with just Python and PyTorch, which is safer for your target machine too.
+>
+> <details><summary>Edited a file</summary>
+>
+> - Wrote `./train_lstm_gpu.py` (+0 -2)
+>
+> </details>
+>
+> I caught one more runtime edge that matters on small samples: if conversion leaves no train rows, PyTorch can fail later in a less obvious way. I’m adding an early, explicit check so the script fails cleanly instead of half-starting.
+>
+> <details><summary>Edited a file</summary>
+>
+> - Wrote `./train_lstm_gpu.py` (+4 -0)
+> - Wrote `./train_lstm_gpu.py` (+3 -0)
+>
+> </details>
+>
+> I spotted one redundant guard in the training script while reviewing the output block. I’m trimming that so the control flow stays clean and easier to trust later.
+>
+> <details><summary>Edited a file</summary>
+>
+> - Wrote `./train_lstm_gpu.py` (+0 -2)
+>
+> </details>
+>
+> I’m making one last polish pass: if PyTorch is missing, the scripts will now fail with a clear dependency message instead of a generic import stack trace. That should save time on the target machine.
+>
+> <details><summary>Edited 2 files</summary>
+>
+> - Wrote `./train_lstm_gpu.py` (+9 -4)
+> - Wrote `./infer_lstm_gpu.py` (+6 -1)
+>
+> </details>
+>
+> I’m grabbing the memory citation lines now so I can be transparent about the prior context I used while building this.
+>
+> I’m checking which Python interpreter in this workspace actually has PyTorch before I launch the background job, so we don’t end up with a dead process and empty logs.
+>
+> I confirmed the default local interpreter doesn’t have `torch`, and the fallback Python here is 3.14, which is a bad fit for PyTorch wheels. I’m checking whether there’s any other installed Python version before I decide whether to launch or stop with a clean blocker.
+>
+> <details><summary>Searched the web</summary>
+>
+> <details><summary>Searched the web</summary>
+>
+> - Searched the web for `site:pytorch.org get started locally pip install torch CUDA official PyTorch installation Python 3.12`
+> - Searched the web for `https://pytorch.org/get-started/locally/`
+>
+> </details>
+>
+> </details>
+>
+> I found a usable Python 3.12 interpreter, so I’m setting up a local venv there first. After that I can launch the trainer in the background and point you at the logs.
+>
+> <details><summary>Searched the web</summary>
+>
+> <details><summary>Searched the web</summary>
+>
+> - Searched the web for `'pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128' in https://pytorch.org/get-started/locally/`
+>
+> </details>
+>
+> </details>
+>
+> I’ve got a compatible Python 3.12 environment, and the PyTorch Windows docs confirm 3.10-3.14 is supported. I’m installing the CUDA wheel into the local venv now so the actual training job can run in the background afterward.
+>
+> PyTorch is downloading now. It’s a big wheel, so I’m just letting that finish and then I’ll launch the training job in the background with redirected stdout/stderr logs.
+>
+> The venv and CUDA PyTorch wheel are in place. I’m checking whether your actual `E:\52\Data_1\...` raw file exists here; if not, I’ll launch the background job against the local 4100i sample tree so you still get a live log stream instead of a dead run.
+>
+> I’ve got a valid GPU-backed PyTorch venv now, so I’m starting the trainer as a hidden background process and redirecting stdout/stderr to log files in the output folder.
+>
+> The background run is live now. I’m tailing the redirected logs and checking the process state so I can give you something concrete instead of just the PID.
+>
+> The trainer is alive, but stdout is still buffered, so the log file hasn’t flushed the epoch lines yet. I’m giving it a little more time, and if needed I’ll relaunch it unbuffered so you can watch the progress live.
+>
+> The background run finished cleanly on the 4100i sample tree, and the model hit 100% test accuracy on that pilot split. I’m checking the output folder now so I can tell you exactly what was produced.
+>
+> One small improvement will make the inference helper more reliable on this one-switch pilot: if a question omits the fixed switch/version/sub-version, we can safely fill those from the trained bundle. I’m adding that now and then I’ll refresh the background run so the saved model matches it.
+>
+> <details><summary>Edited 2 files</summary>
+>
+> - Wrote `./train_lstm_gpu.py` (+3 -0)
+> - Wrote `./infer_lstm_gpu.py` (+9 -1)
+>
+> </details>
+>
+> I’ve patched the one-switch default-slot fallback, and I’m rerunning the background job unbuffered so the log file updates live and the saved bundle reflects the inference improvement.
+>
+> The refreshed background run is up with unbuffered logging. I’m tailing the updated stdout/stderr now so you have the actual live output, not just the process ID.
+>
+> I noticed one sample question in the saved prediction file omitted the fixed switch/version fields, so I’m teaching the sample writer to fill those from the one-switch metadata too. That keeps the artifact consistent with the lookup flow you asked for.
+>
+> <details><summary>Edited a file</summary>
+>
+> - Wrote `./train_lstm_gpu.py` (+9 -0)
+>
+> </details>
+>
+> I’ve patched the sample writer too, so I’m doing one final background rerun to refresh the model bundle and the 20 saved predictions with the fixed-slot fallback.
+>
+> The rerun finished again with the same clean metrics. I’m checking the refreshed prediction samples once so I can confirm the missing-slot fallback did what we wanted.
+</details>
+
+The background run is done, and the pipeline is live in the requested output folder.
+
+What I changed:
+- Added the trainer at [train_lstm_gpu.py](./train_lstm_gpu.py)
+- Added the inference helper at [infer_lstm_gpu.py](./infer_lstm_gpu.py)
+
+What the background run produced:
+- Output folder: [outputs_4100i_gpu](E:/52/Data_1/lstm_one_switch/outputs_4100i_gpu)
+- Stdout log: [train_lstm_gpu.out.log](E:/52/Data_1/lstm_one_switch/outputs_4100i_gpu/train_lstm_gpu.out.log)
+- Stderr log: [train_lstm_gpu.err.log](E:/52/Data_1/lstm_one_switch/outputs_4100i_gpu/train_lstm_gpu.err.log)
+
+Run summary from the logs:
+- `[DEVICE] cuda`
+- `[GPU] NVIDIA GeForce RTX 5070 Ti`
+- `rows scanned: 222`
+- `rows converted: 174`
+- `rows moved to review: 30`
+- `train/val/test split sizes: 138/18/18`
+- `test accuracy: 1.0000`
+
+Artifacts saved:
+- `converted_4100i_lstm.jsonl`
+- `train_4100i_lstm.jsonl`
+- `val_4100i_lstm.jsonl`
+- `test_4100i_lstm.jsonl`
+- `review_4100i_lstm.jsonl`
+- `intent_label_map.json`
+- `target_lookup.json`
+- `lstm_intent_model.pt`
+- `metrics.json`
+- `predictions_sample.jsonl`
+
+One note: the exact requested raw file `E:\52\Data_1\lstm_one_switch\4100i_10_13_0005_raw.jsonl` was not present in this workspace, so I ran the job against the accessible local 4100i sample tree at [train_chat.jsonl](./release_notes_4100i_cleaned/4100i/4100i/10_13/0005/train_chat.jsonl) while still writing the outputs to the requested `E:\52\Data_1\lstm_one_switch\outputs_4100i_gpu` folder. The same scripts will run against the real raw file once it is in place.
+
+> train on this data :C:\Hpe\Train\release_notes_4100i_cleaned
+
+<details><summary>12 previous messages</summary>
+
+> I’m widening the trainer so it can ingest the whole `release_notes_4100i_cleaned` tree, not just one JSONL file. That means recursive `train_chat.jsonl` discovery and no hard filter on a single version/sub-version unless you ask for it.
+>
+> I’m making the trainer tree-aware now so it can walk the whole `release_notes_4100i_cleaned` folder, not just a single file, and I’m keeping the single-file path working too.
+>
+> The tree-aware patch hit a context mismatch, so I’m re-reading the exact sections and will patch them in smaller pieces. That keeps the change surgical and avoids disturbing the working trainer.
+>
+> <details><summary>Edited a file</summary>
+>
+> - Wrote `./train_lstm_gpu.py` (+1 -0)
+> - Wrote `./train_lstm_gpu.py` (+20 -13)
+> - Wrote `./train_lstm_gpu.py` (+30 -22)
+> - Wrote `./train_lstm_gpu.py` (+9 -7)
+> - Wrote `./train_lstm_gpu.py` (+1 -0)
+> - Wrote `./train_lstm_gpu.py` (+16 -4)
+> - Wrote `./train_lstm_gpu.py` (+2 -2)
+> - Wrote `./train_lstm_gpu.py` (+1 -1)
+> - Wrote `./train_lstm_gpu.py` (+2 -0)
+>
+> </details>
+>
+> The trainer is tree-aware now. I’m launching it against `C:\Hpe\Train\release_notes_4100i_cleaned` as a hidden background job and wiring stdout/stderr to the same output log pair so you can watch the full run.
+>
+> The background run is started. I’m tailing the logs now so we can confirm it’s processing the whole tree and not just sitting idle.
+>
+> The full-tree run is definitely live now. I’ve got epoch 1 in the log, so I’m letting it finish and then I’ll summarize the final metrics and outputs for you.
+>
+> The model is converging very fast on the tree-level data. I’m checking once more for the final report block so I can give you the complete result instead of partial epoch output.
+>
+> The full-tree training has finished. I’m checking the saved artifacts once so I can report the exact outputs and counts back to you cleanly.
+>
+> I’m tightening the slot regex for caveat questions so it picks up the feature instead of accidentally latching onto the leading `For 4100i...` prefix. That makes the lookup path much more reliable for the release-caveat intent.
+>
+> <details><summary>Edited a file</summary>
+>
+> - Wrote `./train_lstm_gpu.py` (+7 -1)
+>
+> </details>
+>
+> I’m validating the updated caveat-slot extraction against the saved model right now, because that’s the one place the lookup flow could silently miss an answer if the feature isn’t captured.
+</details>
+
+The full `release_notes_4100i_cleaned` tree is trained now.
+
+What I ran:
+- Hidden background job on [C:\Hpe\Train\release_notes_4100i_cleaned](./release_notes_4100i_cleaned)
+- Output folder: [E:\52\Data_1\lstm_one_switch\outputs_4100i_gpu](E:/52/Data_1/lstm_one_switch/outputs_4100i_gpu)
+- Logs: [train_lstm_gpu.out.log](E:/52/Data_1/lstm_one_switch/outputs_4100i_gpu/train_lstm_gpu.out.log) and [train_lstm_gpu.err.log](E:/52/Data_1/lstm_one_switch/outputs_4100i_gpu/train_lstm_gpu.err.log)
+
+Final run stats:
+- `rows scanned: 5361`
+- `files scanned: 55`
+- `rows converted: 3208`
+- `rows moved to review: 1979`
+- `train/val/test split sizes: 2564/322/322`
+- `test accuracy: 1.0000`
+
+Saved artifacts:
+- [converted_4100i_lstm.jsonl](E:/52/Data_1/lstm_one_switch/outputs_4100i_gpu/converted_4100i_lstm.jsonl)
+- [train_4100i_lstm.jsonl](E:/52/Data_1/lstm_one_switch/outputs_4100i_gpu/train_4100i_lstm.jsonl)
+- [val_4100i_lstm.jsonl](E:/52/Data_1/lstm_one_switch/outputs_4100i_gpu/val_4100i_lstm.jsonl)
+- [test_4100i_lstm.jsonl](E:/52/Data_1/lstm_one_switch/outputs_4100i_gpu/test_4100i_lstm.jsonl)
+- [review_4100i_lstm.jsonl](E:/52/Data_1/lstm_one_switch/outputs_4100i_gpu/review_4100i_lstm.jsonl)
+- [intent_label_map.json](E:/52/Data_1/lstm_one_switch/outputs_4100i_gpu/intent_label_map.json)
+- [target_lookup.json](E:/52/Data_1/lstm_one_switch/outputs_4100i_gpu/target_lookup.json)
+- [lstm_intent_model.pt](E:/52/Data_1/lstm_one_switch/outputs_4100i_gpu/lstm_intent_model.pt)
+- [metrics.json](E:/52/Data_1/lstm_one_switch/outputs_4100i_gpu/metrics.json)
+- [predictions_sample.jsonl](E:/52/Data_1/lstm_one_switch/outputs_4100i_gpu/predictions_sample.jsonl)
+
+I also fixed the caveat feature-slot extraction and verified lookup works on a caveat question with the saved model.
+
+> why are u doing it in e drice when we r in c deive
+
+I used `E:` because your earlier spec explicitly said the input and output should be here:
+
+- `E:\52\Data_1\lstm_one_switch\4100i_10_13_0005_raw.jsonl`
+- `E:\52\Data_1\lstm_one_switch\outputs_4100i_gpu`
+
+The current working directory being `C:\Hpe\Train` just means that’s where I launched the commands from. It does not have to be the same drive as the data or outputs.
+
+If you want everything kept under `C:\Hpe\Train` instead, I can patch the script and rerun it there.
+
+> yes
+
+<details><summary>7 previous messages</summary>
+
+> I’m switching the default paths over to `C:\Hpe\Train` so the whole run stays on the C drive, then I’ll rerun the training there and point the logs at the C-side output folder.
+>
+> I’ve confirmed the trainer still has `E:\` baked into the defaults. I’m changing just those defaults now so the code itself points to `C:\Hpe\Train` and stays portable from this workspace.
+>
+> <details><summary>Edited 2 files</summary>
+>
+> - Wrote `./train_lstm_gpu.py` (+2 -2)
+> - Wrote `./infer_lstm_gpu.py` (+2 -2)
+>
+> </details>
+>
+> The path switch is in place. I’m doing a quick syntax check, then I’ll launch the C-side rerun in the background and stream the logs from there.
+>
+> The rerun is live on `C:\Hpe\Train`. I’m checking the new log files now to make sure the output folder is actually being populated on the C drive.
+>
+> The C-side run is progressing. I’m waiting for the final report block and then I’ll give you the exact C-drive output paths so everything lines up with your workspace.
+>
+> It’s still running, but the log is healthy. I’m checking one more time for the completed artifact list so I can confirm the outputs all landed on `C:\Hpe\Train`.
+</details>
+
+The pipeline now defaults to `C:\Hpe\Train` instead of `E:\52\...`, and I reran it there.
+
+Changed:
+- [train_lstm_gpu.py](./train_lstm_gpu.py)
+- [infer_lstm_gpu.py](./infer_lstm_gpu.py)
+
+C-drive run output:
+- [C:\Hpe\Train\outputs_4100i_gpu](./outputs_4100i_gpu)
+- stdout log: [train_lstm_gpu.out.log](./outputs_4100i_gpu/train_lstm_gpu.out.log)
+- stderr log: [train_lstm_gpu.err.log](./outputs_4100i_gpu/train_lstm_gpu.err.log)
+
+C-drive run result:
+- `rows scanned: 5361`
+- `files scanned: 55`
+- `rows converted: 3208`
+- `rows moved to review: 1979`
+- `test accuracy: 1.0000`
+
+If you want, I can also clean up the old `E:\52\Data_1\lstm_one_switch\outputs_4100i_gpu` copy so there’s only one active output location.
+
+> Fix the LSTM inference pipeline for Aruba AOS-CX release-note QA.
+>
+> Problem:
+> The LSTM intent classifier is working correctly, but many answers are coming as `null` because slot extraction and lookup keys are incomplete.
+>
+> Do not retrain the LSTM yet.
+> Do not increase epochs.
+> Do not change the model architecture.
+> Only fix:
+>
+> 1. slot extraction
+> 2. target lookup keys
+> 3. fallback answer retrieval
+> 4. prediction evaluation
+>
+> Output files:
+>
+> Main issue examples:
+>
+> ```json
+> {
+>   "question": "For 4100i AOS-CX 10.16.1020, what caveat is documented for User Based Tunnel?",
+>   "predicted_intent": "release_caveat",
+>   "slots": {
+>     "switch": "4100i",
+>     "version": "10_16",
+>     "sub_version": "1020"
+>   },
+>   "answer": null
+> }
+> ```
+>
+> This failed because `feature` was not extracted.
+>
+> Correct slots:
+>
+> ```json
+> {
+>   "switch": "4100i",
+>   "version": "10_16",
+>   "sub_version": "1020",
+>   "feature": "User Based Tunnel"
+> }
+> ```
+>
+> Another issue:
+>
+> ```json
+> {
+>   "question": "Which category does Bug 246512 belong to?",
+>   "predicted_intent": "bug_category",
+>   "slots": {
+>     "bug_id": "246512"
+>   },
+>   "answer": null
+> }
+> ```
+>
+> This failed because lookup only supports full switch/version key. Add bug-id-only fallback.
+>
+> Required slot extraction rules:
+>
+> Extract switch/version/sub_version from patterns like:
+>
+> ```text
+> For 4100i AOS-CX 10.16.1020
+> For 4100i AOS-CX 10.13.0005
+> ```
+>
+> Convert:
+>
+> ```text
+> 10.16.1020 → version = 10_16, sub_version = 1020
+> 10.13.0005 → version = 10_13, sub_version = 0005
+> ```
+>
+> Extract bug_id from:
+>
+> ```text
+> Bug 282524
+> Bug ID 282524
+> ```
+>
+> Extract category only from these patterns:
+>
+> ```text
+> in <CATEGORY> Bug <BUG_ID>
+> does <CATEGORY> Bug <BUG_ID>
+> ```
+>
+> Examples:
+>
+> ```text
+> what symptom occurs in TLS Bug 416127
+> → category = TLS
+>
+> under what scenario does MAC Tables Bug 393040 occur
+> → category = MAC Tables
+> ```
+>
+> Do NOT extract category from:
+>
+> ```text
+> Under what scenario does Bug 386155 occur?
+> Which category does Bug 246512 belong to?
+> What is the workaround for Bug 346938?
+> ```
+>
+> For those, slots should contain only bug_id unless switch/version exists.
+>
+> Extract feature for `release_caveat` from these patterns:
+>
+> ```text
+> what caveat is documented for <FEATURE>
+> what limitation is mentioned for <FEATURE>
+> what is the caveat related to <FEATURE>
+> what <FEATURE> caveat is documented
+> ```
+>
+> Examples:
+>
+> ```text
+> what caveat is documented for User Based Tunnel?
+> → feature = User Based Tunnel
+>
+> what limitation is mentioned for SNMP?
+> → feature = SNMP
+>
+> what is the caveat related to SNMP?
+> → feature = SNMP
+> ```
+>
+> Clean extracted feature:
+>
+> * remove trailing `?`
+> * remove extra spaces
+> * preserve original capitalization
+> * do not include switch/version text
+> * do not include words like `caveat`, `limitation`, `mentioned`, `documented`
+>
+> Build `target_lookup_v2.json` with multiple lookup keys per row.
+>
+> For bug rows, store all possible keys:
+>
+> ```text
+> intent|switch|version|sub_version|bug_id
+> intent|bug_id
+> intent|category|bug_id
+> intent|switch|version|sub_version|category|bug_id
+> ```
+>
+> Example:
+>
+> ```text
+> bug_category|4100i|10_14|1020|326043
+> bug_category|326043
+> bug_category|Tunneled Node|326043
+> bug_category|4100i|10_14|1020|Tunneled Node|326043
+> ```
+>
+> For release caveat rows, store all possible keys:
+>
+> ```text
+> release_caveat|switch|version|sub_version|feature
+> release_caveat|switch|version|feature
+> release_caveat|feature
+> ```
+>
+> Example:
+>
+> ```text
+> release_caveat|4100i|10_16|1020|User Based Tunnel
+> release_caveat|4100i|10_16|User Based Tunnel
+> release_caveat|User Based Tunnel
+> ```
+>
+> Lookup fallback order for bug intents:
+>
+> ```text
+> 1. intent|switch|version|sub_version|bug_id
+> 2. intent|switch|version|sub_version|category|bug_id
+> 3. intent|category|bug_id
+> 4. intent|bug_id
+> ```
+>
+> Lookup fallback order for release_caveat:
+>
+> ```text
+> 1. release_caveat|switch|version|sub_version|feature
+> 2. release_caveat|switch|version|feature
+> 3. release_caveat|feature
+> ```
+>
+> Important:
+> If fallback finds multiple answers for the same key, do not silently choose randomly.
+>
+> Use this rule:
+>
+> ```text
+> If exact switch/version/sub_version key exists, use it.
+> If only bug_id key exists and it maps to one answer, use it.
+> If bug_id maps to multiple different answers, return needs_disambiguation.
+> If feature-only key maps to multiple different answers, return needs_disambiguation.
+> ```
+>
+> Expected output when answer is found:
+>
+> ```json
+> {
+>   "question": "What is the workaround for Bug 346938?",
+>   "predicted_intent": "bug_workaround",
+>   "slots": {
+>     "bug_id": "346938"
+>   },
+>   "lookup_key_used": "bug_workaround|346938",
+>   "answer": "Configure ACL to drop invalid source mac address 00:00:00:00:00:00 in all switches where end devices are connected."
+> }
+> ```
+>
+> Expected output when ambiguous:
+>
+> ```json
+> {
+>   "question": "What caveat is documented for SNMP?",
+>   "predicted_intent": "release_caveat",
+>   "slots": {
+>     "feature": "SNMP"
+>   },
+>   "answer": null,
+>   "status": "needs_disambiguation",
+>   "reason": "feature-only lookup matched multiple versions"
+> }
+> ```
+>
+> Evaluation:
+> Re-run inference on the same test set and calculate:
+>
+> ```text
+> intent_accuracy
+> answer_accuracy
+> null_answer_count
+> slot_extraction_success_rate
+> lookup_success_rate
+> disambiguation_count
+> ```
+>
+> Print before/after style summary:
+>
+> ```text
+> Before:
+> intent correct but answer null = many
+>
+> After:
+> answer null should reduce significantly
+> ```
+>
+> Do not retrain the LSTM model in this step.
+>
+> Final expected improvement:
+> Most failed rows where predicted_intent was correct but answer was null should now become correct after lookup fallback fixes.
+
+<details><summary>17 previous messages</summary>
+
+> I’m narrowing this to the inference path only: slot extraction, lookup-key generation, ambiguity handling, and evaluation on the saved test split. I’ll inspect the current helpers first so we can patch them without touching the trained model.
+>
+> I’m sampling the actual question patterns in the saved release-note tree so the regexes match the corpus, not just the examples in the prompt. After that I’ll patch the inference bundle and re-evaluate against the saved split.
+>
+> I’ve got the shape of the fix now. I’m patching the shared helpers first so both the inference CLI and the test-set evaluator can use the same slot extraction and fallback logic.
+>
+> The first patch missed because the file drifted a bit from the earlier edit. I’m reopening just the lookup/slot section and patching it in smaller chunks now.
+>
+> <details><summary>Edited a file</summary>
+>
+> - Wrote `./train_lstm_gpu.py` (+33 -26)
+> - Wrote `./train_lstm_gpu.py` (+111 -0)
+> - Wrote `./train_lstm_gpu.py` (+6 -0)
+>
+> </details>
+>
+> I’m replacing the inference entrypoint with a richer version that can do both one-question QA and full test-set evaluation. It will keep the model frozen and only improve slot/lookup behavior plus reporting.
+>
+> <details><summary>Created a file, deleted a file</summary>
+>
+> - Deleted `./infer_lstm_gpu.py` (+0 -114)
+> - Wrote `./infer_lstm_gpu.py` (+350 -0)
+>
+> </details>
+>
+> The shared helpers and the new evaluator are in place. I’m running a compile check now because the new lookup code is a little more involved, and I want to catch any syntax slip before I evaluate the saved test set.
+>
+> I’m running the evaluator against the saved test split now. This does not retrain anything; it just loads the frozen model, rebuilds the v2 lookup, and compares old vs new retrieval behavior.
+>
+> The new v2 lookup file has already been generated, so the evaluator is past the lookup-build stage. I’m polling the process now to wait for the final metrics block.
+>
+> I hit a real bug in the shared helper: the new feature-cleaning function never landed in `train_lstm_gpu.py`, so the evaluator crashed when it tried to extract caveat features. I’m inserting that helper now and rerunning the test-set evaluation.
+>
+> <details><summary>Edited a file</summary>
+>
+> - Wrote `./train_lstm_gpu.py` (+14 -0)
+>
+> </details>
+>
+> The missing helper is patched in. I’m doing one quick syntax check, then I’ll rerun the saved test-set evaluation to get the before/after counts and the new sample file.
+>
+> The evaluator is back up. I’m waiting for the final metrics block now, which should show the old-vs-new null-answer improvement once it finishes scanning the test split.
+>
+> One more small regex gap showed up in the evaluation: `what limitation is mentioned for SNMP?` wasn’t captured because that phrasing omits `is` in the spot I expected. I’m adding that explicit variant so the feature-only caveat lookup resolves more of the test split.
+>
+> <details><summary>Edited a file</summary>
+>
+> - Wrote `./train_lstm_gpu.py` (+2 -1)
+>
+> </details>
+>
+> The regex fix is in. I’m rerunning the test-set evaluator once more so the metrics reflect the improved caveat feature extraction instead of the earlier gap.
+</details>
+
+Fixed the inference pipeline without retraining the LSTM.
+
+What changed:
+- Improved slot extraction in [train_lstm_gpu.py](./train_lstm_gpu.py)
+- Added multi-key v2 lookup generation in [train_lstm_gpu.py](./train_lstm_gpu.py)
+- Reworked inference and evaluation in [infer_lstm_gpu.py](./infer_lstm_gpu.py)
+- Saved the new lookup and eval outputs in `C:\Hpe\Train\outputs_4100i_gpu`
+
+New output files:
+- [target_lookup_v2.json](./outputs_4100i_gpu/target_lookup_v2.json)
+- [metrics_v2.json](./outputs_4100i_gpu/metrics_v2.json)
+- [predictions_sample_v2.jsonl](./outputs_4100i_gpu/predictions_sample_v2.jsonl)
+
+Test-set evaluation after the fix:
+- `intent_accuracy = 1.0000`
+- `answer_accuracy = 0.9224`
+- `null_answer_count = 25`
+- `slot_extraction_success_rate = 0.9503`
+- `lookup_success_rate = 0.9224`
+- `disambiguation_count = 9`
+
+Before vs after:
+- Before: `intent correct but answer null = 72`
+- After: `answer null = 25`
+
+A couple of the exact gaps you called out are now handled:
+- `release_caveat` feature extraction now catches `what limitation is mentioned for SNMP?`
+- bug lookups now fall back to `bug_id`-only keys when switch/version/category are missing
+- ambiguous feature-only or bug-id-only matches return `needs_disambiguation` instead of a silent `null`
+
+If you want, I can also run a quick spot-check on 5 to 10 real questions and show the exact JSON responses from the updated inference path.

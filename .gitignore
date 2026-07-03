@@ -1,0 +1,17 @@
+.venv312/
+__pycache__/
+backend_cache/
+logs/
+outputs_*/
+outputs*/
+Data/
+_bundle_models_used_fullbackend/
+models_bundle.zip
+models_used_bundle_*.zip
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.gguf
+*.pkl
+*.log

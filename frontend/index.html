@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aruba QA Console</title>
+    <link rel="stylesheet" href="/frontend/styles.css" />
+    <script type="module" src="/frontend/app.js"></script>
+  </head>
+  <body>
+    <div class="bg-orb orb-a"></div>
+    <div class="bg-orb orb-b"></div>
+    <div class="bg-grid"></div>
+
+    <div class="app-shell">
+      <aside class="sidebar panel">
+        <div class="brand">
+          <div class="brand-mark">A</div>
+          <div>
+            <div class="brand-title">Aruba QA Console</div>
+            <div class="brand-subtitle">Local release + product assistant</div>
+          </div>
+        </div>
+
+        <button id="newConversationBtn" class="primary-btn">New Conversation</button>
+
+        <section class="sidebar-section">
+          <div class="section-title">Conversations</div>
+          <div id="conversationList" class="conversation-list"></div>
+        </section>
+
+        <section class="sidebar-section">
+          <div class="section-title">Quick Prompts</div>
+          <div id="exampleList" class="example-list"></div>
+        </section>
+
+        <section class="sidebar-section">
+          <div class="section-title">Active Context</div>
+          <div id="contextBadges" class="badge-row"></div>
+        </section>
+      </aside>
+
+      <main class="main-area">
+        <section class="panel context-panel">
+          <div class="context-grid">
+            <label class="field">
+              <span>Switch *</span>
+              <select id="switchSelect">
+                <option value="">Select switch</option>
+                <option>4100i</option>
+                <option>6100</option>
+                <option>6200</option>
+                <option>6300</option>
+                <option>6400</option>
+                <option>8325</option>
+                <option>8360</option>
+                <option>8400</option>
+                <option value="10000">CX10000</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Domain</span>
+              <select id="domainSelect">
+                <option value="auto">Auto</option>
+                <option value="release">Release Notes</option>
+                <option value="product">Product Docs</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="context-row">
+            <div id="activeContext" class="badge-row"></div>
+            <label class="toggle">
+              <input id="debugToggle" type="checkbox" />
+              <span>Show debug</span>
+            </label>
+          </div>
+        </section>
+
+        <section class="chat-panel panel">
+          <div id="chatFeed" class="chat-feed"></div>
+          <form id="chatForm" class="composer">
+            <textarea
+              id="questionInput"
+              rows="3"
+              placeholder="Ask about a bug, command, limitation, workaround, or troubleshooting step..."
+            ></textarea>
+            <div class="composer-row">
+              <div id="hintText" class="hint-text">Select a switch to enable asking a question.</div>
+              <button id="sendBtn" class="primary-btn" type="submit" disabled>Ask</button>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
