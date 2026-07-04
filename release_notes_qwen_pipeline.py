@@ -362,14 +362,28 @@ def is_bad_syntax_artifact(text: str, expected_command: str = "") -> bool:
     candidate = _clean_markdown_text(_prompt_safe_text(text))
     if not candidate:
         return True
+    lines = [line.strip() for line in candidate.splitlines() if line.strip()]
     had_artifact = bool(
         re.search(r"\.{8,}", candidate)
         or candidate.startswith(".")
         or re.search(r"\b(?:page|pg)\s*\d+\b", candidate, flags=re.IGNORECASE)
-        or re.search(r"\b\d{1,4}\s+[A-Za-z][A-Za-z0-9._/-]*(?:\s+[A-Za-z][A-Za-z0-9._/-]*){0,7}\b", candidate)
+        or re.search(r"\bcontents\b", candidate, flags=re.IGNORECASE)
+        or any(re.match(r"^\s*\d{1,4}\s+[A-Za-z]", line) for line in lines)
+        or any(re.match(r"^\s*[-*•]\s+", line) for line in lines)
     )
     cleaned = clean_cli_syntax(candidate)
     if not cleaned:
+        return True
+    cleaned_lines = [clean_cli_syntax(line) for line in lines if clean_cli_syntax(line)]
+    command_like_lines = [
+        line
+        for line in cleaned_lines
+        if re.match(
+            r"^(?:no\s+)?(?:show|clear|ip|ipv6|interface|vlan|bfd|redundancy|apply|aaa|erps|mdns-sd)\b",
+            line.lower(),
+        )
+    ]
+    if len(command_like_lines) > 1:
         return True
     if had_artifact and len(cleaned.split()) <= 3 and not any(symbol in cleaned for symbol in ("<", ">", "[", "]", "{", "}", "|", "(")):
         return True
@@ -393,6 +407,11 @@ def is_bad_syntax_artifact(text: str, expected_command: str = "") -> bool:
                     if idx == len(expected_tokens):
                         break
             if idx < max(1, min(len(expected_tokens), 2)):
+                return True
+    if expected and command_like_lines:
+        expected_text = clean_cli_syntax(expected).lower()
+        if expected_text and all(expected_text not in line.lower() for line in command_like_lines):
+            if len(command_like_lines) > 1 or had_artifact:
                 return True
     return False
 
