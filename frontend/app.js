@@ -44,12 +44,13 @@ const els = {
 };
 
 const EXAMPLES = [
-  "What is the workaround for Bug 401936?",
-  "For 4100i AOS-CX 10.18.0001, what limitation is mentioned for SNMP?",
-  "What is the symptom of Bug 348886?",
+  "For 10000 AOS-CX 10.07, what does the guide say about Management Module Failover Overview?",
+  "For 8400 AOS-CX 10.17.1000, what is Step 3: Configuring local proxy ARP in switch A?",
   "For 4100i AOS-CX 10.13.1170, what caveat is documented for IP-SLA?",
-  "What about the above bug?",
-  "For 10000 AOS-CX 10.07, what is High Availability Overview?",
+  "For 4100i AOS-CX 10.16.1030, what caveat is documented for Central?",
+  "For 4100i AOS-CX 10.13.1120, what caveat is documented for REST?",
+  "For 4100i AOS-CX 10.13.1150, what caveat is documented for Certificates?",
+  "For 4100i AOS-CX 10.17.1010, what caveat is documented for Classifiers?",
 ];
 
 function escapeHtml(value) {
@@ -365,6 +366,9 @@ function debugHtml(result) {
   const availability = result.debug?.availability_check || {};
   return `
     <div><strong>Conversation:</strong> ${escapeHtml(result.conversation_id || "-")}</div>
+    <div><strong>Answer type:</strong> ${escapeHtml(result.answer_type || "-")}</div>
+    <div><strong>Validation passed:</strong> ${result.validation_passed ? "yes" : "no"}</div>
+    <div><strong>Rejection reason:</strong> ${escapeHtml(result.rejection_reason || "-")}</div>
     <div><strong>Predicted intent:</strong> ${escapeHtml(result.predicted_intent || "-")}</div>
     <div><strong>Lookup status:</strong> ${escapeHtml(result.lookup_status || "-")}</div>
     <div><strong>Source type:</strong> ${escapeHtml(result.source_type || "-")}</div>
@@ -375,6 +379,7 @@ function debugHtml(result) {
     <div><strong>Slots:</strong> ${escapeHtml(JSON.stringify(slots, null, 2))}</div>
     <div><strong>Lookup key used:</strong> ${escapeHtml(result.lookup_key_used || "-")}</div>
     <div><strong>Availability:</strong> ${escapeHtml(JSON.stringify(availability, null, 2))}</div>
+    <div><strong>Bypass Qwen:</strong> ${result.debug?.bypass_qwen ? "yes" : "no"}</div>
     <div><strong>Qwen validation:</strong> ${result.qwen_validation_passed ? "passed" : "skipped / failed"}</div>
   `;
 }
