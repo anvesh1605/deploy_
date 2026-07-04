@@ -26,6 +26,15 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _default_allowed_origins() -> list[str]:
+    return [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
+
 def _resolve_model_file(model_dir: Path, filename: str = "best_model.pt") -> Path:
     if model_dir.suffix:
         return model_dir
@@ -78,5 +87,9 @@ PRODUCT_LOOKUP_DATA_PATHS = _collect_product_lookup_paths(PRODUCT_DOCS_DATA_DIR)
 FRONTEND_DIR = ROOT / "frontend"
 BACKEND_CACHE_DIR = ROOT / "backend_cache"
 CHAT_CONVERSATIONS_PATH = BACKEND_CACHE_DIR / "chat_conversations.json"
-ALLOWED_ORIGINS = [origin.strip() for origin in _env_text("ALLOWED_ORIGINS", "*").split(",") if origin.strip()]
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in _env_text("ALLOWED_ORIGINS", ",".join(_default_allowed_origins())).split(",")
+    if origin.strip()
+]
 PORT = _env_int("PORT", 8000)
