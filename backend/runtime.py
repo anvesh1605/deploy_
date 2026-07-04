@@ -50,13 +50,10 @@ from lstm_lookup import (  # noqa: E402
     write_jsonl,
 )
 from release_notes_qwen_pipeline import (  # noqa: E402
-    _extract_cli_syntax,
-    clean_cli_syntax,
     format_cli_syntax_answer,
     generate_qwen_answer,
     is_command_purpose_question,
     is_cli_syntax_answer,
-    is_bad_syntax_artifact,
     load_lstm_support,
     load_lookup_resources,
     load_qwen_model,
@@ -94,11 +91,6 @@ PRODUCT_NEEDS_DISAMBIGUATION_RESPONSE = (
     "Multiple possible answers were found. Please provide more detail such as feature, command, version, or sub-version."
 )
 PRODUCT_SLOT_MISSING_RESPONSE = "I need more detail to answer this, such as the command, topic, version, or sub-version."
-
-PRODUCT_SYNTAX_VALIDATION_FALLBACK = (
-    "I found a related entry, but the retrieved text looks like a table-of-contents or index artifact, "
-    "so I cannot safely return it as exact syntax."
-)
 
 PRODUCT_FOLLOWUP_CONTEXT_MISSING_RESPONSE = (
     "I need more context. Please specify the topic you want me to explain."
@@ -431,77 +423,16 @@ def _product_is_command_purpose_question(question: str) -> bool:
 
 
 def _product_answer_looks_like_cli_syntax(answer: str) -> bool:
-    raw = _clean(answer)
-    text = raw.lower()
-
+    text = _clean(answer).lower()
     if not text:
         return False
-
-    if re.search(r"\bsyntax\s*:", text):
+    if "syntax:" in text or "command syntax" in text:
         return True
-
-    if re.search(r"\bcommand syntax\s*:", text):
+    if any(symbol in text for symbol in ("<", ">", "[", "]", "{", "}", "|", "(")) and len(text.split()) <= 80:
         return True
-
-    lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
-
-    if len(lines) <= 3:
-        joined = " ".join(lines)
-
-        has_cli_symbols = any(
-            symbol in joined for symbol in ("<", ">", "[", "]", "{", "}", "|")
-        )
-
-        starts_like_command = re.match(
-            r"^(?:no\s+)?(show|clear|ip|ipv6|interface|vlan|bfd|redundancy|apply|aaa|erps|mdns-sd)\b",
-            joined.lower(),
-        )
-
-        if has_cli_symbols and starts_like_command and len(joined.split()) <= 40:
-            return True
-
+    if re.search(r"\b(?:show|no|clear|ip|interface|vlan|bfd|redundancy|apply|erps|aaa|mdns-sd)\b", text):
+        return True
     return False
-
-
-def _product_syntax_validation_result(question: str, lookup_answer: str, slots: Dict[str, str]) -> Tuple[bool, str, str]:
-    command = _clean(slots.get("command", "")) or _product_command_from_question(question)
-    raw_answer = _clean(lookup_answer)
-    syntax_candidate = clean_cli_syntax(_extract_cli_syntax(raw_answer, command))
-    if not syntax_candidate:
-        return False, "no clean syntax candidate found", ""
-
-    if is_bad_syntax_artifact(raw_answer, command):
-        return False, "lookup answer contains syntax artifact markers", syntax_candidate
-
-    candidate_lines = [line.strip() for line in raw_answer.splitlines() if line.strip()]
-    command_like_lines = [
-        line
-        for line in candidate_lines
-        if re.match(
-            r"^(?:\d{1,4}\s+)?(?:no\s+)?(?:show|clear|ip|ipv6|interface|vlan|bfd|redundancy|apply|aaa|erps|mdns-sd)\b",
-            line.lower(),
-        )
-    ]
-    if len(command_like_lines) > 1:
-        return False, "multiple command entries detected in lookup answer", syntax_candidate
-
-    if any(re.search(r"\.{8,}", line) for line in candidate_lines):
-        return False, "dotted leader artifact detected", syntax_candidate
-
-    if any(re.search(r"^\s*\d{1,4}\s+[A-Za-z]", line) for line in candidate_lines):
-        return False, "page-number prefix detected before syntax", syntax_candidate
-
-    if len(candidate_lines) > 3 and syntax_candidate and len(syntax_candidate.split()) <= 40:
-        return False, "multiple adjacent lines detected in syntax answer", syntax_candidate
-
-    if command:
-        syntax_lower = syntax_candidate.lower()
-        if command.lower().startswith("show ") and "show " not in syntax_lower:
-            return False, "expected show command syntax was not preserved", syntax_candidate
-        if not command.lower().startswith("show ") and re.search(r"\bshow\s+", syntax_lower) and not re.search(r"\bshow\s+", command.lower()):
-            return False, "unrelated show command detected in syntax answer", syntax_candidate
-
-    return True, "", syntax_candidate
 
 
 def _normalize_product_lookup_question(question: str, slots: Dict[str, str], predicted_intent: str) -> str:
@@ -1617,53 +1548,30 @@ class ProductRuntime:
         final_answer = _format_deterministic("product", lookup_status)
         source_type = predicted_intent
         data_family = "product_documentation"
-        answer_type = predicted_intent
-        validation_passed = True
-        rejection_reason = ""
-        bypass_qwen = False
 
         if lookup_status == "found" and lookup_answer:
             formatter_lookup_answer = lookup_answer
             if used_previous_context and previous_context_answer:
                 formatter_lookup_answer = previous_context_answer
 
-            is_strict_syntax_question = bool(
-                is_syntax_question
-                or is_command_purpose
-                or _product_answer_looks_like_cli_syntax(formatter_lookup_answer)
-            )
-            if is_strict_syntax_question:
-                answer_type = "cli_syntax"
-                validation_passed, rejection_reason, syntax_candidate = _product_syntax_validation_result(
+            if is_syntax_question or is_command_purpose or _product_answer_looks_like_cli_syntax(formatter_lookup_answer):
+                final_answer = format_cli_syntax_answer(
                     cleaned_question,
-                    formatter_lookup_answer,
-                    slots,
+                    lookup_answer,
+                    {"intent": predicted_intent, **slots},
                 )
-                if validation_passed and syntax_candidate:
-                    final_answer = format_cli_syntax_answer(
-                        cleaned_question,
-                        formatter_lookup_answer,
-                        {"intent": predicted_intent, **slots},
-                    )
-                    answer_source = "deterministic_command_formatter" if is_command_purpose and not is_syntax_question else "deterministic_cli_syntax"
-                    final_answer = _cleanup_product_markdown(_strip_product_generated_label(final_answer))
-                else:
-                    final_answer = PRODUCT_SYNTAX_VALIDATION_FALLBACK
-                    answer_source = "deterministic_syntax_validation"
-                    qwen_answer = None
-                    qwen_validation_passed = False
-                    bypass_qwen = True
+                answer_source = "deterministic_command_formatter" if is_command_purpose and not is_syntax_question else "deterministic_cli_syntax"
             else:
                 final_answer = _polish_product_answer(lookup_answer, predicted_intent, slots)
                 answer_source = "deterministic_lookup"
 
             use_qwen_for_product = self.qwen.loaded and _should_use_qwen("product", predicted_intent, lookup_answer)
-            if is_strict_syntax_question or not validation_passed:
+            if is_syntax_question or is_command_purpose:
                 use_qwen_for_product = False
             if used_previous_context and len(formatter_lookup_answer.split()) < 15:
                 use_qwen_for_product = False
 
-            if use_qwen_for_product and validation_passed:
+            if use_qwen_for_product:
                 prompt = _build_qwen_prompt(
                     "product",
                     cleaned_question,
@@ -1698,8 +1606,6 @@ class ProductRuntime:
                 except Exception:
                     qwen_answer = None
                     qwen_validation_passed = False
-            elif is_strict_syntax_question:
-                bypass_qwen = True
         elif used_previous_context and previous_context_answer:
             final_answer = _polish_product_answer(previous_context_answer, predicted_intent, slots)
             answer_source = "session_context"
@@ -1708,8 +1614,6 @@ class ProductRuntime:
             lookup_key_used = "session_context"
 
         final_answer = _cleanup_product_markdown(_strip_product_generated_label(final_answer))
-        if (is_syntax_question or is_command_purpose or answer_type == "cli_syntax") and not validation_passed:
-            final_answer = PRODUCT_SYNTAX_VALIDATION_FALLBACK
 
         if lookup_status == "found" and lookup_answer:
             formatter_lookup_answer = lookup_answer
@@ -1734,10 +1638,6 @@ class ProductRuntime:
             print(f"[FORMATTER] final_answer_length: {len(final_answer or '')}")
             print(f"[FORMATTER] is_cli_syntax: {is_syntax_question}")
             print(f"[FORMATTER] is_command_purpose: {is_command_purpose}")
-            print(f"[FORMATTER] answer_type: {answer_type}")
-            print(f"[FORMATTER] validation_passed: {validation_passed}")
-            print(f"[FORMATTER] rejection_reason: {rejection_reason}")
-            print(f"[FORMATTER] bypass_qwen: {bypass_qwen}")
             print(f"[FORMATTER] qwen_used: {qwen_used}")
             print(f"[FORMATTER] validation_passed: {qwen_validation_passed}")
             print(f"[FOLLOWUP] is_followup: {is_followup}")
@@ -1761,18 +1661,10 @@ class ProductRuntime:
             "data_family": data_family,
             "confidence": confidence,
             "similarity": similarity,
-            "answer_type": answer_type,
-            "validation_passed": validation_passed,
-            "rejection_reason": rejection_reason or None,
             "debug": {
                 "availability_check": availability_check,
                 "is_followup": is_followup,
                 "used_previous_context": used_previous_context,
-                "answer_type": answer_type,
-                "validation_passed": validation_passed,
-                "rejection_reason": rejection_reason or None,
-                "lookup_key_used": lookup_key_used,
-                "bypass_qwen": bypass_qwen,
             },
         }
 
